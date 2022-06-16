@@ -4,9 +4,12 @@
 #include <time.h>
 #include <ctime> 
 
+using namespace std;
+
 
 //Declaracion de funciones.
-void initSolutionFunc(int *initSolution, int N);
+
+//Funciones SA
 float getProbTemp(float T, float evalFirst, float evalSecond );
 float objetivefunction(int *solution);
 int *randomSolution(int N);
@@ -14,15 +17,12 @@ int *simulatedAnnealing(int *initSolution, float initT, float varT, int iterT, f
 
 //Funciones de ayuda
 void showProb();
-void show(int *arrayNum);
-void fillArray(int* array, int N);
+void showArr(int *arrayNum);
 void freeMemoria();
 void copyArray(int *entryArray, int *finalArray);
 bool inArray( int* arrayNumber, int n,int number);
 
 
-
-using namespace std;
 
 //Variables Globales
 int N; // Numero de armas, objetivos => Tamaño de matriz cuadrada, tamaño de solucion
@@ -34,14 +34,13 @@ float **probMat;
 int main(int argc, char *argv[]) {
     
    
-  unsigned t0 = clock(); // Inicio Codigo
+  unsigned t0 = clock(); // Inicio Ejecucion
 
    
    /////////////////////////////////////////////////////////////////////////////////
    ///////////////////// Read File /////////////////////////////////////////////////
    /////////////////////////////////////////////////////////////////////////////////
    
-    
     //get parametros
     string fileName = argv[1];    
     ifstream file(fileName);
@@ -57,8 +56,9 @@ int main(int argc, char *argv[]) {
         probMat[i] = new float[N];
     } 
   
-    destroyValues = new int[N];
+   
     //Get Values Destruction 
+    destroyValues = new int[N];
     for(int i = 0; i < N; i++){
         file >> destroyValues[i] ;
     }
@@ -78,13 +78,13 @@ int main(int argc, char *argv[]) {
     //////////////////////////////////////////////////////////////////////////////
 
 
-    
+    // Parametros
     
     float initT = 100;   // Temperatura inicial 
     float varT = 0.1;     // Razon de disminucion de Temperatura
     int iterT = 100;     // Cada cuantos iteraciones varia Temperatura
-    float randProb = 0.9; //Random a comparar con probabilidad
-    int nIter = 100000;      // Numero iteraciones totales
+    float randProb = 0.5; //Random a comparar con probabilidad
+    int nIter = 10000000;      // Numero iteraciones totales
 
   
     
@@ -96,28 +96,28 @@ int main(int argc, char *argv[]) {
     int *finalSolution = new int[N];
     finalSolution = simulatedAnnealing(initSolution, initT, varT, iterT, randProb, nIter);
     
-   
-
-        
+      
 
     //print 
     /*cout << "probMat" ;
     showProb();
     cout << "destroyValues" << endl; 
-    show(destroyValues);
+    showArr(destroyValues);
     */
      
     //Solucion inicial junto a su valor de evaluacion
     cout << "Init Solution" << endl;
-    show(initSolution);
+    showArr(initSolution);
     cout << "Obj: " << objetivefunction(initSolution) << endl;
+
+    cout << endl;
     
      //Mejor solucion  junto a su valor de evaluacion
     cout << "Final Solution" << endl;
-    show(finalSolution);
+    showArr(finalSolution);
     cout << "Obj: " << objetivefunction(finalSolution) << endl;
    
-   
+    cout << endl;
    
     // Liberar memoria pedida memoria
     freeMemoria();
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
 
     
     //Clock
-    unsigned t1 = clock(); // Termino codigo
+    unsigned t1 = clock(); // Termino Ejecucion 
 
     double time = (double(t1-t0)/CLOCKS_PER_SEC);
     cout << "Execution Time: " << time << "[s]"<< endl;
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 /////////////////////////////////////////////////////////////////////////////
 
 
-//Funcion que calcula el valor de una solucion 
+//Funcion que calcula el valor en la funcion de evaluacionde una solucion 
 float objetivefunction(int *solution){
     float sum = 0;
     for(int i = 0; i < N; i++){
@@ -151,13 +151,14 @@ float objetivefunction(int *solution){
 
 
 //Obtiene la probabilidad para que una solucion se acepte sin ser mejor que la anterior
-float getProbTemp(float T, float evalFirst, float evalSecond ){
-    float prob = exp((-1)*(evalSecond/evalFirst)/T);
+float getProbTemp(float T, float lastsolution, float thissolution ){
+    float delta = lastsolution - thissolution;
+    float prob = exp(delta/T);
     return prob;
 }
 
 
-//Genera solucion aleatoria
+//Genera solucion inicial aleatoria
 int *randomSolution(int N){
     int *randomSolution = new int[N];
     srand (time(NULL));
@@ -177,14 +178,13 @@ int *simulatedAnnealing(int *initSolution, float initT, float varT, int iterT, f
     int *bestSolution = new int[N];  //Almacena la mejor solucion por iteracion
     float minLocal = 999999;  //Almacena el valor de la mejor solucion
 
-    int *thisSolution = new int[N]; //Almacena vecino generados en esta iteracion
+    int *thisSolution = new int[N]; //Almacena vecino generado
     int *sonSolution = new int[N]; //Almacena soluciones de otras iteraciones
-    copyArray(initSolution, thisSolution);
-    
-
+    copyArray(initSolution, thisSolution); //Copia
     
     if(nIter == 0) return thisSolution; // Terminar el ciclo cuando las iteraciones terminen
     
+    //Creamos el vecindario
     for (int i = 0; i < N; i++){
         ///// Create a new solution -- SWAP
         if (i == (N - 1)){
@@ -196,57 +196,59 @@ int *simulatedAnnealing(int *initSolution, float initT, float varT, int iterT, f
             thisSolution[i+1] = initSolution[i];
         }
 
-       
+    
         ////////////////// Observar comportamiento de Metodo ///////////////////////
+        
         /*
         cout << "Temp  varTemp  iterTemp  randProb nIter" << endl;
         cout << initT << "    "<< varT << "   " << iterT << "   " << randProb << "   " <<  nIter << endl;
         cout << "Solucion" << endl;
-        show(thisSolution);
+        showArr(thisSolution);
         cout << "Obj: " << objetivefunction(thisSolution) << endl;
-        */
-       
-       
+       */
+         
         //////////// Compare Solutions //////////////////
-        if (objetivefunction(thisSolution) < objetivefunction(initSolution)){
+        
+        if (objetivefunction(thisSolution) < objetivefunction(initSolution)){ //Si la nueva solucion es mejor que la anterior
             //cout << endl << "Por mejor" << endl;
             nIter = nIter - 1; //Descuenta  Iteraciones
             if(nIter % iterT == 0) initT = initT * (1 -varT);
-            sonSolution =  simulatedAnnealing(thisSolution, initT, varT, iterT, randProb, nIter); 
-            break;
+            sonSolution =  simulatedAnnealing(thisSolution, initT, varT, iterT, randProb, nIter); //Tomamos la solucion y realizamos las siguientes iteraciones
+            break;  //Rompemos el ciclo y evitamos la creacion de los vecinos restantes innecesarios (Alguna Mejora)
         }
-        else {
-            if (getProbTemp(initT, objetivefunction(initSolution), objetivefunction(thisSolution)) > randProb){ //Obtiene probabilidad 
-               // cout << "Probabilidad: " << getProbTemp(initT, objetivefunction(initSolution), objetivefunction(thisSolution)) << endl;
-                //cout << endl << "Por probabilidad" << endl;
-                
+        
+        
+        else { //Si la nueva solucion es peor que la anterior
+            //Puede seleccionarse segun la probabilidad
+            if (getProbTemp(initT, objetivefunction(initSolution), objetivefunction(thisSolution)) > randProb){  
                 nIter = nIter - 1; //Descuenta iteraciones
-                if(nIter % iterT == 0 && iterT != nIter) initT = initT * (1 -varT);
-                sonSolution =  simulatedAnnealing(thisSolution, initT, varT, iterT, randProb, nIter);
-                break;
+                
+                //showArr(thisSolution);
+                //cout << endl << "Por probabilidad" << endl;
+                //cout << "Probabilidad: " << getProbTemp(initT, objetivefunction(initSolution), objetivefunction(thisSolution)) << endl;
+                
+                if(nIter % iterT == 0 && iterT != nIter) initT = initT * (1 -varT); //Actualizamos temperatura segun las iteraciones que se han realizado
+                sonSolution =  simulatedAnnealing(thisSolution, initT, varT, iterT, randProb, nIter); //Tomamos la solucion y realizamos las siguientes iteraciones
+                break; //Rompemos el ciclo y evitamos la creacion de los vecinos restantes innecesarios (Alguna Mejora)
             }
-            else { 
-                copyArray(initSolution, thisSolution);
-                //cout << endl << "Siguiente Vecino" << endl;
-                continue;
-            }
+            
+            //No se selecciona -> Seguimos con el siguiente vecino
+            else copyArray(initSolution, thisSolution); //Se resetea el arreglo para crear siguiente vecino         
         }     
-
-       
-
     }
 
+    //Comparamos el mejor valor de los vecinos para almacenar la mejor
     if(objetivefunction(thisSolution) < minLocal){
             minLocal = objetivefunction(thisSolution);
             copyArray(thisSolution,bestSolution);
         }    
-    
+    //Comparamos los valores de las iteraciones para almacenar la mejor
     if(objetivefunction(sonSolution) < minLocal){
-            minLocal = objetivefunction(thisSolution);
-            copyArray(sonSolution,bestSolution);
+        minLocal = objetivefunction(thisSolution);
+        copyArray(sonSolution,bestSolution);
         }
     
-    return bestSolution;
+    return bestSolution; //Retornamos la mejor solucion
 
 }
 
@@ -262,6 +264,7 @@ int *simulatedAnnealing(int *initSolution, float initT, float varT, int iterT, f
 //////////////////////////// Tools Functions //////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+//Muestra matriz de probabilidades NxN
 void showProb(){
     cout << "           " ;
     for (int i = 0; i < N; i++){
@@ -280,13 +283,15 @@ void showProb(){
     cout << endl; 
 }
 
-void show(int *arrayNum){
+//Muestra arreglo de tamaño N
+void showArr(int *arrayNum){
     for (int i = 0; i < N; i++){
         cout << arrayNum[i] << "\040";
     }
     cout  << endl; 
 }
 
+//libera Memoria
 void freeMemoria(){
     for (int i = 0; i < N ; i++){
         delete[] probMat[i];
@@ -296,28 +301,18 @@ void freeMemoria(){
     
 }
 
-  void copyArray(int *entryArray, int *finalArray){
+//Copia un arreglo a otro
+void copyArray(int *entryArray, int *finalArray){
         for(int i = 0; i < N; i++){
             finalArray[i] = entryArray[i];
         }
-    }
+    } 
 
-
-void fillArray(int* array, int N){
-    cout << "Ingrese " << N << " Valores" << endl;
-    for(int i = 0; i < N; i++){
-        cin >> array[i];
-    }    
-    cout << endl;
-}
-
+//Verifica si elemento se encuentra en arreglo
 bool inArray( int* arrayNumber, int n,int number){
     for (int i = 0; i < n; i++) if (arrayNumber[i] == number) return true;
     return false;
 }
-
-
-
 
 
 
